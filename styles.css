@@ -1,0 +1,125 @@
+body {
+  background: #181818;
+  color: #fff;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+}
+
+#slot-machine {
+  background: #222;
+  border-radius: 16px;
+  box-shadow: 0 4px 32px #000a;
+  padding: 30px 24px 24px 24px;
+  max-width: 340px;
+  width: 100%;
+}
+
+.reels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.reel {
+  background: #111;
+  border: 2px solid #555;
+  border-radius: 10px;
+  width: 48px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7em;
+  margin: 0 7px;
+  box-shadow: 0 2px 10px #000a;
+}
+
+.reel div {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.reel.spinning {
+  filter: blur(1.5px) brightness(1.1);
+  box-shadow: 0 0 16px #ffd70077;
+  transition: filter 0.2s, box-shadow 0.2s;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.controls input[type="number"] {
+  display: flex;
+  align-items: flex-end;
+  width: 70px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #181818;
+  color: #fff;
+  font-size: 1em;
+  margin-bottom: 0;
+  gap: 10px;
+}
+
+.controls button {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 16px;
+  margin-bottom: 10px;
+  background: linear-gradient(90deg, #e67e22, #f1c40f);
+  border: none;
+  border-radius: 7px;
+  color: #222;
+  padding: 8px 20px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0005;
+}
+
+.slot-cash-box {
+  background: linear-gradient(90deg, #2ecc40 60%, #27ae60 100%);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 32px;
+  font-size: 1.3em;
+  font-weight: bold;
+  box-shadow: 0 2px 8px #0004;
+  min-width: 120px;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#result {
+  min-height: 40px;
+  text-align: center;
+  font-size: 1.2em; 
+  margin-top: 6px;
+  font-weight: bold;
+}
+
+.win-symbol {
+  animation: pulse 0.6s cubic-bezier(0.4,0,0.6,1) 2;
+  /* 2 pulses, adjust as needed */
+  filter: drop-shadow(0 0 8px #ffd700);
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
