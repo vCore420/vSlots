@@ -15,6 +15,7 @@ body {
   box-shadow: 0 4px 32px #000a;
   padding: 30px 24px 24px 24px;
   max-width: 540px; /* Increased from 340px */
+  min-height: 440px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -255,6 +256,95 @@ body {
   opacity: 0;
   animation: coin-burst 1s forwards;
 }
+
+.slot-sprites {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 48px; /* Adjust for sprite size */
+  pointer-events: none;
+  z-index: 1; /* Under all slot content, above background */
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.sprite {
+  position: absolute;
+  bottom: 0;
+  font-size: 2em; /* Adjust for sprite size */
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(.68,-0.55,.27,1.55);
+  will-change: transform;
+}
+
+.feature-modal {
+  position: absolute;
+  z-index: 100;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.4s;
+}
+
+.feature-modal-content {
+  background: #222;
+  border-radius: 16px;
+  padding: 32px 48px;
+  color: #ffd700;
+  text-align: center;
+  box-shadow: 0 4px 32px #000a;
+  transform: scale(0.8);
+  animation: zoomIn 0.4s forwards;
+}
+
+.feature-counter {
+  text-align: center;
+  color: #ffd700;
+  font-size: 1.1em;
+  margin-top: 8px;
+  font-weight: bold;
+  text-shadow: 0 2px 8px #000a;
+}
+
+.feature-spin-btn {
+  margin-top: 24px;
+  padding: 12px 36px;
+  font-size: 1.2em;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, #e67e22, #f1c40f);
+  color: #222;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0004;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.feature-spin-btn:active {
+  background: #ffe066;
+  transform: scale(0.96);
+}
+
+.feature-modal-content.zoomOut {
+  animation: zoomOut 0.4s forwards;
+}
+
+.feature-win-symbol {
+  animation: pulse 0.7s infinite alternate;
+  filter: drop-shadow(0 0 8px #ffd700) brightness(1.5);
+}
+
+@keyframes zoomOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.7); opacity: 0; }
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes zoomIn { from { transform: scale(0.8); } to { transform: scale(1); } }
 
 @keyframes coin-burst {
   0% {

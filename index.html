@@ -7,6 +7,7 @@
 </head>
 <body>
   <div id="slot-machine">
+    <div class="slot-sprites"></div>
     <div class="slot-glare"></div>
     <div class="slot-bulbs"></div>
     <div class="slot-stars"></div>
@@ -28,8 +29,25 @@
     </div>
      <button id="spin">Spin</button>
     </div>
+    <div id="feature-counter" class="feature-counter" style="display:none;"></div>
     <div id="result"></div>
     <div class="coin-burst"></div>
+    <div id="feature-modal" class="feature-modal" style="display:none;">
+      <div class="feature-modal-content">
+        <h2>🎉 Feature Unlocked! 🎉</h2>
+        <p>You’ve won <b>7 Free Games</b> with extra wilds!</p>
+        <p>Press <b>Spin</b> to begin your free games.</p>
+        <button id="feature-spin-btn" class="feature-spin-btn">Spin</button>
+      </div>
+    </div>
+    <div id="random-bonus-modal" class="feature-modal" style="display:none;">
+      <div class="feature-modal-content">
+        <h2>✨Random Bonus Feature Triggered!✨</h2>
+        <p>You’ve unlocked a special spin with extra wilds and only high-value symbols!</p>
+        <p>Press <b>Spin</b> to start your bonus spin.</p>
+        <button id="random-bonus-spin-btn" class="feature-spin-btn">Spin</button>
+      </div>
+    </div>
   </div>
   <script src="scripts.js"></script>
 </body>

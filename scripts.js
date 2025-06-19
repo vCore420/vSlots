@@ -2,13 +2,29 @@ const NUM_REELS = 5;
 const NUM_ROWS = 5;
 const SPIN_DURATION = 1200; // ms total spin time per reel
 const SPIN_DELAY = 250;     // ms delay between each reel's stop
-
+// Initial player cash
+let playerCash = 1000; 
+// Feature state
+let featureActive = false;
+let featureSpinsLeft = 0;
+let featureBet = 0;
+// Random bonus state
+let randomBonusActive = false;
+let randomBonusBet = 0;
+// Animated Sprites
+const SPRITE_EMOJIS = ['💰', '💵', '💎', '💵'];
+let spriteCount = 1; // Start with one sprite
+const MAX_SPRITES = 10;
+let sprites = [];
+// Bet options for the player
 const BET_OPTIONS = [1, 10, 50, 100, 250, 500, 1000, 5000, 10000, 50000]; // Array of bet options
 let betIndex = 1; // Default to 10
-
 // Slot symbols and weights
-const symbols = ['🍒', '🍋', '7️⃣', '🔔', '🍀', '⭐'];
+const WILD_SYMBOL = '🃏';
+const FEATURE_SYMBOL = '🎁';
+const symbols = ['🍒', '🍋', '7️⃣', '🔔', '🍀', '⭐', WILD_SYMBOL, FEATURE_SYMBOL];
 
+// Payout value table for each symbol
 const payoutTable = {
   '🍒': { 3: 0.2, 4: 0.4, 5: 0.8 },
   '🍋': { 3: 0.3, 4: 0.6, 5: 1 },
@@ -19,8 +35,9 @@ const payoutTable = {
   '💎': { 3: 3, 4: 6, 5: 15 },
 };
 
-// Horizontal paylines for all rows
+// Define the paylines
 const paylines = [
+  // Horizontal paylines for all rows
   [0,0,0,0,0], // Top row
   [1,1,1,1,1],
   [2,2,2,2,2],
@@ -84,11 +101,11 @@ const paylines = [
 
 // Define symbol counts for each reel (adjust as needed)
 const SYMBOL_COUNTS = [
-  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 4, '⭐': 3, '💎': 2 }, // Reel 1
-  { '🍒': 5, '🍋': 3, '🔔': 3, '🍀': 4, '7️⃣': 2, '⭐': 3, '💎': 2 }, // Reel 2
-  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 3, '⭐': 1, '💎': 1 }, // Reel 3
-  { '🍒': 3, '🍋': 4, '🔔': 3, '🍀': 4, '7️⃣': 4, '⭐': 3, '💎': 2 }, // Reel 4
-  { '🍒': 4, '🍋': 3, '🔔': 4, '🍀': 3, '7️⃣': 2, '⭐': 2, '💎': 1 }  // Reel 5
+  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 4, '⭐': 3, '💎': 2, [WILD_SYMBOL]: 0, [FEATURE_SYMBOL]: 1  }, // Reel 1
+  { '🍒': 5, '🍋': 3, '🔔': 3, '🍀': 4, '7️⃣': 2, '⭐': 3, '💎': 2, [WILD_SYMBOL]: 1, [FEATURE_SYMBOL]: 0  }, // Reel 2
+  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 3, '⭐': 1, '💎': 1, [WILD_SYMBOL]: 2, [FEATURE_SYMBOL]: 1  }, // Reel 3
+  { '🍒': 3, '🍋': 4, '🔔': 3, '🍀': 4, '7️⃣': 4, '⭐': 3, '💎': 2, [WILD_SYMBOL]: 1, [FEATURE_SYMBOL]: 0  }, // Reel 4
+  { '🍒': 4, '🍋': 3, '🔔': 4, '🍀': 3, '7️⃣': 2, '⭐': 2, '💎': 1, [WILD_SYMBOL]: 0, [FEATURE_SYMBOL]: 1  }  // Reel 5
 ];
 
 // Helper to create a shuffled reel strip for a given symbol count object
@@ -124,34 +141,56 @@ function spinReels() {
   return result;
 }
 
+// Try to trigger a random bonus with a 0.5% chance
+function tryTriggerRandomBonus() {
+  return Math.random() < 0.005;
+}
+
+// Count how many reels contain the feature symbol
+function checkFeatureTrigger(result) {
+  const reelsWithFeature = result.filter(reel => reel.includes(FEATURE_SYMBOL)).length;
+  return reelsWithFeature >= 3;
+}
+
+// Check if a symbol matches the target symbol or is a wild
+function isMatch(symbol, target) {
+  return symbol === target || symbol === WILD_SYMBOL;
+}
+
+// Check for wins along all paylines
 function checkPaylineWins(result, paylines, payoutTable) {
   let wins = [];
   for (const line of paylines) {
     // Build the symbol sequence along this line
     let symbolsLine = line.map((row, reel) => result[reel][row]);
-    let firstSymbol = symbolsLine[0];
-    let consecutive = 1;
-    // Count consecutive matches from the left
-    for (let i = 1; i < symbolsLine.length; i++) {
-      if (symbolsLine[i] === firstSymbol) {
+
+    // Find the first non-wild symbol to use as the "target" for this line
+    let targetSymbol = symbolsLine.find(sym => sym !== WILD_SYMBOL);
+    if (!targetSymbol) continue; // All wilds, skip (or handle as special case if you want)
+
+    let consecutive = 0;
+    for (let i = 0; i < symbolsLine.length; i++) {
+      if (symbolsLine[i] === targetSymbol || symbolsLine[i] === WILD_SYMBOL) {
         consecutive++;
       } else {
         break;
       }
     }
-    // Pay for 3, 4, or 5 matches
-    if (consecutive >= 3 && payoutTable[firstSymbol] && payoutTable[firstSymbol][consecutive]) {
+
+    // Pay for 3, 4, or 5 matches (using the target symbol's payout)
+    if (consecutive >= 3 && payoutTable[targetSymbol] && payoutTable[targetSymbol][consecutive]) {
       wins.push({
         line,
-        symbol: firstSymbol,
+        symbol: targetSymbol,
         count: consecutive,
-        payout: payoutTable[firstSymbol][consecutive]
+        payout: payoutTable[targetSymbol][consecutive]
       });
     }
   }
   return wins;
 }
 
+// Calculate total payout based on bet and wins
 function calculatePayout(bet, wins) {
   let total = 0;
   for (const win of wins) {
@@ -160,6 +199,7 @@ function calculatePayout(bet, wins) {
   return total;
 }
 
+// Render the reels in the UI
 function renderReels(result, winningPositions = []) {
   for (let i = 0; i < NUM_REELS; i++) {
     // Build this reel's HTML
@@ -175,6 +215,7 @@ function renderReels(result, winningPositions = []) {
   }
 }
 
+// Animate the spinning of reels
 function animateSpin(finalResult, onFinish) {
   let currentResult = Array.from({ length: NUM_REELS }, () => Array(NUM_ROWS).fill(''));
   let reelIntervals = [];
@@ -207,6 +248,7 @@ function animateSpin(finalResult, onFinish) {
   }
 }
 
+// Get winning positions for display
 function getWinningPositions(wins) {
   let positions = [];
   for (const win of wins) {
@@ -218,6 +260,7 @@ function getWinningPositions(wins) {
   return positions;
 }
 
+// Display the result in the UI
 function displayResult(wins, payout) {
   if (wins.length > 0) {
     // Aggregate total multiplier per symbol and round to nearest 0.1
@@ -247,13 +290,12 @@ function displayResult(wins, payout) {
   }
 }
 
-let playerCash = 1000; // You will update this from Lua in your FiveM NUI callback
-
+// Update the cash box display
 function updateCashBox() {
   document.getElementById('cash-box').textContent = `$${playerCash}`;
 }
 
-// Initial render
+// Initial render of reels
 renderReels([
   ['🍒', '🍋', '7️⃣', '🔔', '🍀'],
   ['🍀', '⭐', '🍒', '🍋', '7️⃣'],
@@ -262,10 +304,12 @@ renderReels([
   ['🍋', '🍒', '🍀', '⭐', '7️⃣']
 ]);
 
+// Update the bet display
 function updateBetDisplay() {
   document.getElementById('bet-display').textContent = `$${BET_OPTIONS[betIndex]}`;
 }
 
+// Event listeners for bet controls
 document.getElementById('bet-decrease').addEventListener('click', () => {
   if (betIndex > 0) {
     betIndex--;
@@ -282,6 +326,45 @@ document.getElementById('bet-increase').addEventListener('click', () => {
 
 // Initialize display on page load
 updateBetDisplay();
+
+// Render the initial sprites
+function renderSprites() {
+  const spritesContainer = document.querySelector('.slot-sprites');
+  spritesContainer.innerHTML = '';
+  sprites = [];
+  for (let i = 0; i < spriteCount; i++) {
+    const sprite = document.createElement('div');
+    sprite.className = 'sprite';
+    sprite.innerText = SPRITE_EMOJIS[i % SPRITE_EMOJIS.length];
+    spritesContainer.appendChild(sprite);
+    sprites.push(sprite);
+  }
+  setTimeout(() => {
+    const areaWidth = spritesContainer.offsetWidth || 340;
+    sprites.forEach(sprite => wanderSprite(sprite, areaWidth));
+  }, 100);
+}
+
+// Make the sprites wander randomly within the container
+function wanderSprite(sprite, areaWidth) {
+  const minX = 0;
+  const maxX = areaWidth - 48; // 48px sprite width
+  function move() {
+    const x = minX + Math.random() * (maxX - minX);
+    sprite.style.transform = `translateX(${x}px)`;
+    const duration = 1200 + Math.random() * 1800;
+    setTimeout(move, duration);
+  }
+  move();
+}
+
+// Add a sprite when a big win occurs
+function addSpriteOnBigWin() {
+  if (spriteCount < MAX_SPRITES) {
+    spriteCount++;
+    renderSprites();
+  }
+}
 
 // Create the slot bulbs dynamically
 window.addEventListener('DOMContentLoaded', () => {
@@ -330,6 +413,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Flicker stars
   function flickerStar(star) {
     // Longer off time: 5s to 15s
     const offTime = 5000 + Math.random() * 10000;
@@ -344,8 +428,11 @@ window.addEventListener('DOMContentLoaded', () => {
       }, 220 + Math.random() * 130);
     }, offTime);
   }
+
+  renderSprites();
 });
 
+// Trigger a burst of coins or cash
 function triggerBurst(count = 12, symbol = '🪙') {
   const burst = document.querySelector('.coin-burst');
   if (!burst) return;
@@ -373,9 +460,207 @@ function triggerBurst(count = 12, symbol = '🪙') {
   }
 }
 
-// Use this in your spin button click handler:
+// Run a random bonus spin
+function runRandomBonusSpin() {
+  const bet = randomBonusBet;
+  document.getElementById('spin').disabled = true;
+  document.getElementById('result').textContent = 'Spinning...';
 
+  // Only high-value symbols and extra wilds
+  const HIGH_SYMBOLS = ['⭐', '7️⃣', '💎', WILD_SYMBOL];
+  const BONUS_SYMBOL_COUNTS = [
+    { '⭐': 3, '7️⃣': 3, '💎': 2, [WILD_SYMBOL]: 5 },
+    { '⭐': 3, '7️⃣': 3, '💎': 2, [WILD_SYMBOL]: 5 },
+    { '⭐': 3, '7️⃣': 3, '💎': 2, [WILD_SYMBOL]: 5 },
+    { '⭐': 3, '7️⃣': 3, '💎': 2, [WILD_SYMBOL]: 5 },
+    { '⭐': 3, '7️⃣': 3, '💎': 2, [WILD_SYMBOL]: 5 },
+  ];
+
+  function bonusSpinReels() {
+    let result = [];
+    for (let i = 0; i < NUM_REELS; i++) {
+      const reelStrip = createShuffledReel(BONUS_SYMBOL_COUNTS[i]);
+      const stop = Math.floor(Math.random() * reelStrip.length);
+      let window = [];
+      for (let j = -2; j <= 2; j++) {
+        let idx = (stop + j + reelStrip.length) % reelStrip.length;
+        window.push(reelStrip[idx]);
+      }
+      result.push(window);
+    }
+    return result;
+  }
+
+  const result = bonusSpinReels();
+
+  animateSpin(result, () => {
+    const wins = checkPaylineWins(result, paylines, payoutTable);
+    const payout = calculatePayout(bet, wins);
+    playerCash += payout;
+    updateCashBox();
+    const winningPositions = getWinningPositions(wins);
+    renderReels(result, winningPositions);
+    displayResult(wins, payout);
+    if (payout >= 2 * bet) {
+      triggerBurst(12, '🪙');
+      addSpriteOnBigWin(); 
+    } else if (payout >= 3 * bet) {
+      triggerBurst(18, '💵'); 
+      addSpriteOnBigWin(); 
+    } else if (payout >= 5 * bet) {
+      triggerBurst(26, '🎉'); 
+      addSpriteOnBigWin(); 
+    }
+    setBetControlsEnabled(true);
+    randomBonusActive = false;
+    document.getElementById('spin').disabled = false;
+  });
+}
+
+// Run the feature free spins with more wilds
+function runFeatureSpin() {
+  const bet = featureBet;
+  document.getElementById('spin').disabled = true;
+  document.getElementById('result').textContent = 'Spinning...';
+
+  // Use reels with more wilds during feature
+  const FEATURE_SYMBOL_COUNTS = [
+    { ...SYMBOL_COUNTS[0], [WILD_SYMBOL]: (SYMBOL_COUNTS[0][WILD_SYMBOL] || 0) + 5 },
+    { ...SYMBOL_COUNTS[1], [WILD_SYMBOL]: (SYMBOL_COUNTS[1][WILD_SYMBOL] || 0) + 4 },
+    { ...SYMBOL_COUNTS[2], [WILD_SYMBOL]: (SYMBOL_COUNTS[2][WILD_SYMBOL] || 0) + 5 },
+    { ...SYMBOL_COUNTS[3], [WILD_SYMBOL]: (SYMBOL_COUNTS[3][WILD_SYMBOL] || 0) + 4 },
+    { ...SYMBOL_COUNTS[4], [WILD_SYMBOL]: (SYMBOL_COUNTS[4][WILD_SYMBOL] || 0) + 3 },
+  ];
+
+  function featureSpinReels() {
+    let result = [];
+    for (let i = 0; i < NUM_REELS; i++) {
+      const reelStrip = createShuffledReel(FEATURE_SYMBOL_COUNTS[i]);
+      const stop = Math.floor(Math.random() * reelStrip.length);
+      let window = [];
+      for (let j = -2; j <= 2; j++) {
+        let idx = (stop + j + reelStrip.length) % reelStrip.length;
+        window.push(reelStrip[idx]);
+      }
+      result.push(window);
+    }
+    return result;
+  }
+
+  const result = featureSpinReels();
+
+  animateSpin(result, () => {
+    const wins = checkPaylineWins(result, paylines, payoutTable);
+    const payout = calculatePayout(bet, wins);
+    playerCash += payout;
+    updateCashBox();
+    const winningPositions = getWinningPositions(wins);
+    renderReels(result, winningPositions);
+    displayResult(wins, payout);
+    if (payout >= 2 * bet) {
+      triggerBurst(12, '🪙');
+      addSpriteOnBigWin(); 
+    } else if (payout >= 3 * bet) {
+      triggerBurst(18, '💵'); 
+      addSpriteOnBigWin(); 
+    } else if (payout >= 5 * bet) {
+      triggerBurst(26, '🎉'); 
+      addSpriteOnBigWin(); 
+    }
+    featureSpinsLeft--;
+    updateFeatureCounter();
+    if (featureSpinsLeft > 0) {
+      document.getElementById('spin').disabled = false;
+    } else {
+      featureActive = false;
+      featureBet = 0;
+      hideFeatureCounter();
+      setBetControlsEnabled(true); 
+      document.getElementById('spin').disabled = false;
+    }
+  });
+}
+
+// Enable or disable bet controls based on feature state
+function setBetControlsEnabled(enabled) {
+  document.getElementById('bet-increase').disabled = !enabled;
+  document.getElementById('bet-decrease').disabled = !enabled;
+}
+
+// Highlight feature symbols in the reels
+function highlightFeatureSymbols(result) {
+  for (let reel = 0; reel < result.length; reel++) {
+    for (let row = 0; row < result[reel].length; row++) {
+      if (result[reel][row] === FEATURE_SYMBOL) {
+        const reelDiv = document.getElementById(`reel${reel + 1}`);
+        if (reelDiv && reelDiv.children[row]) {
+          reelDiv.children[row].classList.add('feature-win-symbol');
+        }
+      }
+    }
+  }
+}
+
+// Clear feature highlights from the reels
+function clearFeatureHighlights() {
+  document.querySelectorAll('.feature-win-symbol').forEach(el => {
+    el.classList.remove('feature-win-symbol');
+  });
+}
+
+// Update the feature counter display
+function updateFeatureCounter() {
+  const counter = document.getElementById('feature-counter');
+  counter.style.display = 'block';
+  counter.textContent = `Free Games: ${featureSpinsLeft} / 7`;
+}
+
+function hideFeatureCounter() {
+  const counter = document.getElementById('feature-counter');
+  counter.style.display = 'none';
+}
+
+// spin button click handler:
 document.getElementById('spin').addEventListener('click', () => {
+  // If random bonus modal is up, start the bonus
+  if (document.getElementById('random-bonus-modal').style.display === 'flex') {
+    document.getElementById('random-bonus-modal').style.display = 'none';
+    randomBonusActive = true;
+    updateBetDisplay();
+    runRandomBonusSpin();
+    return;
+  }
+
+  // If random bonus is active, run the bonus spin
+  if (randomBonusActive) {
+    runRandomBonusSpin();
+    return;
+  }
+
+  // If feature modal is up, start feature
+  if (document.getElementById('feature-modal').style.display === 'flex') {
+    document.getElementById('feature-modal').style.display = 'none';
+    featureActive = true;
+    featureSpinsLeft = 7;
+    updateFeatureCounter();
+    runFeatureSpin();
+    return;
+  }
+
+  // If feature is active, run feature spin
+  if (featureActive) {
+    runFeatureSpin();
+    return;
+  }
+
+  // Try to trigger random bonus
+  if (tryTriggerRandomBonus()) {
+    randomBonusBet = BET_OPTIONS[betIndex];
+    setBetControlsEnabled(false);
+    document.getElementById('random-bonus-modal').style.display = 'flex';
+    return;
+  }
+
   const bet = BET_OPTIONS[betIndex];
 
   if (playerCash < bet) {
@@ -392,6 +677,27 @@ document.getElementById('spin').addEventListener('click', () => {
   document.getElementById('result').textContent = 'Spinning...';
 
   animateSpin(result, () => {
+    // Check for feature trigger
+    if (checkFeatureTrigger(result)) {
+      featureBet = BET_OPTIONS[betIndex]; // Lock in the bet at trigger time
+      setBetControlsEnabled(false);        // Disable bet controls
+
+      // Highlight feature symbols
+      highlightFeatureSymbols(result);
+
+      // Show "Feature Won" in result
+      document.getElementById('result').innerHTML =
+        `<span style="color:#ffd700;font-weight:bold;">Feature Won!</span>`;
+
+      // Pause, then show feature modal
+      setTimeout(() => {
+        clearFeatureHighlights();
+        document.getElementById('feature-modal').style.display = 'flex';
+        document.getElementById('spin').disabled = false;
+      }, 1200); // 1.2s pause for effect
+      return;
+    }
+
     const wins = checkPaylineWins(result, paylines, payoutTable);
     const payout = calculatePayout(bet, wins);
 
@@ -401,11 +707,38 @@ document.getElementById('spin').addEventListener('click', () => {
     const winningPositions = getWinningPositions(wins);
     renderReels(result, winningPositions); // <-- with pulse highlights!
     displayResult(wins, payout);
-    if (payout >= 3 * bet) {
-      triggerBurst(18, '💵'); // Cash burst for triple or more
-    } else if (payout >= 2 * bet) {
-      triggerBurst(12, '🪙'); // Coin burst for double or more
+    if (payout >= 2 * bet) {
+      triggerBurst(12, '🪙'); // Coin burst for double win
+      addSpriteOnBigWin(); // Add a sprite on big win
+    } else if (payout >= 3 * bet) {
+      triggerBurst(18, '💵'); // Cash burst for triple win
+      addSpriteOnBigWin(); // Add a sprite on big win
+    } else if (payout >= 5 * bet) {
+      triggerBurst(26, '🎉'); // Celabrate burst for five times win or more
+      addSpriteOnBigWin(); // Add a sprite on big win
     }
     document.getElementById('spin').disabled = false;
   });
+});
+
+// Feature spin button click handler
+document.getElementById('feature-spin-btn').addEventListener('click', () => {
+  const modal = document.getElementById('feature-modal');
+  const content = modal.querySelector('.feature-modal-content');
+  content.classList.add('zoomOut');
+  setTimeout(() => {
+    modal.style.display = 'none';
+    content.classList.remove('zoomOut');
+    featureActive = true;
+    featureSpinsLeft = 7;
+    updateFeatureCounter();
+    runFeatureSpin();
+  }, 400); // Match the animation duration
+});
+
+// Random bonus spin button click handler
+document.getElementById('random-bonus-spin-btn').addEventListener('click', () => {
+  document.getElementById('random-bonus-modal').style.display = 'none';
+  randomBonusActive = true;
+  runRandomBonusSpin();
 });
