@@ -3,17 +3,20 @@ const NUM_ROWS = 5;
 const SPIN_DURATION = 1200; // ms total spin time per reel
 const SPIN_DELAY = 250;     // ms delay between each reel's stop
 
+const BET_OPTIONS = [1, 10, 50, 100, 250, 500, 1000, 5000, 10000, 50000]; // Array of bet options
+let betIndex = 1; // Default to 10
+
 // Slot symbols and weights
 const symbols = ['🍒', '🍋', '7️⃣', '🔔', '🍀', '⭐'];
-const payouts = { '🍒': 2, '🍋': 3, '7️⃣': 10, '🔔': 5, '🍀': 8, '⭐': 20 };
 
 const payoutTable = {
-  '🍒': { 3: 1.2, 4: 1.5, 5: 1.8 },
-  '🍋': { 3: 2, 4: 2.2, 5: 2.5 },
-  '🔔': { 3: 2.2, 4: 2.5, 5: 2.8 },
-  '🍀': { 3: 3, 4: 3.5, 5: 4 },
-  '⭐': { 3: 5, 4: 8, 5: 10 },
-  '7️⃣': { 3: 10, 4: 20, 5: 50},
+  '🍒': { 3: 0.2, 4: 0.4, 5: 0.8 },
+  '🍋': { 3: 0.3, 4: 0.6, 5: 1 },
+  '🔔': { 3: 0.4, 4: 0.8, 5: 1.2 },
+  '🍀': { 3: 0.6, 4: 1, 5: 1.5 },
+  '⭐': { 3: 1, 4: 2, 5: 3 },
+  '7️⃣': { 3: 2, 4: 4, 5: 10 },
+  '💎': { 3: 3, 4: 6, 5: 15 },
 };
 
 // Horizontal paylines for all rows
@@ -79,36 +82,42 @@ const paylines = [
   // ... (add more creative lines as desired)
 ];
 
-function getWeightedReel() {
-  // Weighted for more cherries/lemons, fewer 7s/stars
-  return [
-    '🍒','🍒','🍒','🍒','🍒',
-    '🍋','🍋','🍋',
-    '7️⃣',
-    '🔔','🔔','🔔',
-    '🍒',
-    '🍀','🍀','🍀',
-    '🍒','🍒',
-    '⭐','⭐',
-    '🍋','🍋','🍋',
-    '🍒','🍒',
-    '7️⃣','7️⃣',
-    '🍀','🍀',
-    '🍒',
-    '🔔','🔔','🔔',
-    '⭐','⭐'
-  ];
+// Define symbol counts for each reel (adjust as needed)
+const SYMBOL_COUNTS = [
+  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 4, '⭐': 3, '💎': 2 }, // Reel 1
+  { '🍒': 5, '🍋': 3, '🔔': 3, '🍀': 4, '7️⃣': 2, '⭐': 3, '💎': 2 }, // Reel 2
+  { '🍒': 4, '🍋': 4, '🔔': 4, '🍀': 3, '7️⃣': 3, '⭐': 1, '💎': 1 }, // Reel 3
+  { '🍒': 3, '🍋': 4, '🔔': 3, '🍀': 4, '7️⃣': 4, '⭐': 3, '💎': 2 }, // Reel 4
+  { '🍒': 4, '🍋': 3, '🔔': 4, '🍀': 3, '7️⃣': 2, '⭐': 2, '💎': 1 }  // Reel 5
+];
+
+// Helper to create a shuffled reel strip for a given symbol count object
+function createShuffledReel(symbolCount) {
+  let strip = [];
+  for (const [symbol, count] of Object.entries(symbolCount)) {
+    for (let i = 0; i < count; i++) {
+      strip.push(symbol);
+    }
+  }
+  // Shuffle the strip
+  for (let i = strip.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [strip[i], strip[j]] = [strip[j], strip[i]];
+  }
+  return strip;
 }
 
+// On each spin, generate a new shuffled strip for each reel
 function spinReels() {
   let result = [];
   for (let i = 0; i < NUM_REELS; i++) {
-    const reel = getWeightedReel();
-    const stop = Math.floor(Math.random() * reel.length);
-    // Wrap-around for a 5-row window
+    const reelStrip = createShuffledReel(SYMBOL_COUNTS[i]);
+    const stop = Math.floor(Math.random() * reelStrip.length);
+    // Get 5 symbols centered on stop (wrap around)
     let window = [];
     for (let j = -2; j <= 2; j++) {
-      window.push(reel[(stop + j + reel.length) % reel.length]);
+      let idx = (stop + j + reelStrip.length) % reelStrip.length;
+      window.push(reelStrip[idx]);
     }
     result.push(window);
   }
@@ -211,11 +220,27 @@ function getWinningPositions(wins) {
 
 function displayResult(wins, payout) {
   if (wins.length > 0) {
-    let lines = wins.map(w =>
-      `${w.symbol} <span style="color:#ffd700">x${w.payout}</span>`
-    ).join('<br>');
+    // Aggregate total multiplier per symbol and round to nearest 0.1
+    const symbolTotals = {};
+    wins.forEach(w => {
+      if (!symbolTotals[w.symbol]) symbolTotals[w.symbol] = 0;
+      symbolTotals[w.symbol] += w.payout;
+    });
+
+    // Build an array of formatted symbol results
+    const symbolLines = Object.entries(symbolTotals).map(
+      ([symbol, totalPayout]) =>
+        `${symbol} <span style="color:#ffd700">x${Math.round(totalPayout * 10) / 10}</span>`
+    );
+
+    // Group into rows of 3
+    let groupedLines = '';
+    for (let i = 0; i < symbolLines.length; i += 3) {
+      groupedLines += symbolLines.slice(i, i + 3).join(' &nbsp; ') + '<br>';
+    }
+
     document.getElementById('result').innerHTML =
-      `<span style="color:#ffd700;font-weight:bold;">WIN!</span><br>${lines}<br><br>Payout: <span style="color:#2ecc40;font-weight:bold;">$${payout}</span>`;
+      `<span style="color:#ffd700;font-weight:bold;">WIN!</span><br>${groupedLines}<br>Payout: <span style="color:#2ecc40;font-weight:bold;">$${Math.round(payout * 10) / 10}</span>`;
   } else {
     document.getElementById('result').innerHTML =
       '<span style="color:#e74c3c">No win. Try again!</span>';
@@ -237,11 +262,121 @@ renderReels([
   ['🍋', '🍒', '🍀', '⭐', '7️⃣']
 ]);
 
+function updateBetDisplay() {
+  document.getElementById('bet-display').textContent = `$${BET_OPTIONS[betIndex]}`;
+}
+
+document.getElementById('bet-decrease').addEventListener('click', () => {
+  if (betIndex > 0) {
+    betIndex--;
+    updateBetDisplay();
+  }
+});
+
+document.getElementById('bet-increase').addEventListener('click', () => {
+  if (betIndex < BET_OPTIONS.length - 1) {
+    betIndex++;
+    updateBetDisplay();
+  }
+});
+
+// Initialize display on page load
+updateBetDisplay();
+
+// Create the slot bulbs dynamically
+window.addEventListener('DOMContentLoaded', () => {
+  const bulbsContainer = document.querySelector('.slot-bulbs');
+  const bulbsPerTop = 18;
+  const bulbsPerSide = 12;
+  const bulbSize = 14; // px, should match your .bulb width/height
+
+  // Top (left to right)
+  for (let i = 0; i < bulbsPerTop; i++) {
+    const bulb = document.createElement('div');
+    bulb.className = 'bulb';
+    bulb.style.left = `calc(${(i / (bulbsPerTop - 1)) * 100}% - ${bulbSize / 2}px)`;
+    bulb.style.top = `-${bulbSize / 2}px`;
+    bulbsContainer.appendChild(bulb);
+  }
+  // Right (top to bottom, skip first and last)
+  for (let i = 1; i < bulbsPerSide - 1; i++) {
+    const bulb = document.createElement('div');
+    bulb.className = 'bulb';
+    bulb.style.left = `calc(100% - ${bulbSize / 2}px)`;
+    bulb.style.top = `calc(${(i / (bulbsPerSide - 1)) * 100}% - ${bulbSize / 2}px)`;
+    bulbsContainer.appendChild(bulb);
+  }
+  // Left (top to bottom, skip first and last)
+  for (let i = bulbsPerSide - 2; i > 0; i--) {
+    const bulb = document.createElement('div');
+    bulb.className = 'bulb';
+    bulb.style.left = `-${bulbSize / 2}px`;
+    bulb.style.top = `calc(${(i / (bulbsPerSide - 1)) * 100}% - ${bulbSize / 2}px)`;
+    bulbsContainer.appendChild(bulb);
+  }
+  // Starfield
+  const starsContainer = document.querySelector('.slot-stars');
+  if (starsContainer) {
+    const STAR_COUNT = 18; // Fewer stars
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const star = document.createElement('div');
+      star.className = 'slot-star';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      starsContainer.appendChild(star);
+
+      // Start the random flicker loop for this star
+      flickerStar(star);
+    }
+  }
+
+  function flickerStar(star) {
+    // Longer off time: 5s to 15s
+    const offTime = 5000 + Math.random() * 10000;
+    setTimeout(() => {
+      // Twinkle on: make it bigger and brighter
+      star.classList.add('twinkle');
+      // Stay on for a longer time (220ms to 350ms)
+      setTimeout(() => {
+        star.classList.remove('twinkle');
+        // Recursively schedule the next flicker
+        flickerStar(star);
+      }, 220 + Math.random() * 130);
+    }, offTime);
+  }
+});
+
+function triggerBurst(count = 12, symbol = '🪙') {
+  const burst = document.querySelector('.coin-burst');
+  if (!burst) return;
+
+  for (let i = 0; i < count; i++) {
+    const item = document.createElement('div');
+    item.className = 'coin';
+    item.innerHTML = symbol;
+
+    // Random angle and distance
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
+    const distance = 80 + Math.random() * 40;
+    const x = Math.cos(angle) * distance;
+    const y = Math.sin(angle) * distance;
+
+    item.style.left = `calc(50% - 16px + ${x}px)`;
+    item.style.top = `calc(60% - 16px + ${y}px)`;
+    item.style.animationDelay = `${Math.random() * 0.2}s`;
+
+    burst.appendChild(item);
+
+    setTimeout(() => {
+      item.remove();
+    }, 1200);
+  }
+}
 
 // Use this in your spin button click handler:
 
 document.getElementById('spin').addEventListener('click', () => {
-  const bet = Math.max(1, parseInt(document.getElementById('bet').value, 10) || 1);
+  const bet = BET_OPTIONS[betIndex];
 
   if (playerCash < bet) {
     document.getElementById('result').innerHTML =
@@ -266,6 +401,11 @@ document.getElementById('spin').addEventListener('click', () => {
     const winningPositions = getWinningPositions(wins);
     renderReels(result, winningPositions); // <-- with pulse highlights!
     displayResult(wins, payout);
+    if (payout >= 3 * bet) {
+      triggerBurst(18, '💵'); // Cash burst for triple or more
+    } else if (payout >= 2 * bet) {
+      triggerBurst(12, '🪙'); // Coin burst for double or more
+    }
     document.getElementById('spin').disabled = false;
   });
 });

@@ -2,29 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Slot Machine Example</title>
+  <title>vSlot Machine</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="slot-machine">
+    <div class="slot-glare"></div>
+    <div class="slot-bulbs"></div>
+    <div class="slot-stars"></div>
     <div class="reels">
       <div class="reel" id="reel1"></div>
       <div class="reel" id="reel2"></div>
-      <div class="reel" id="reel3"></div> .
+      <div class="reel" id="reel3"></div>
       <div class="reel" id="reel4"></div>
       <div class="reel" id="reel5"></div>
     </div>
     <div class="controls">
-        <div class="controls-left">
-         <label for="bet">Bet:</label>
-         <input type="number" id="bet" min="1" value="10" />
-         <button id="spin">Spin</button>
-        </div>
-      <div class="slot-cash-box" id="cash-box">
-        $1000
-      </div>
+      <div class="bet-group">
+      <button id="bet-decrease" type="button">&#8722;</button>
+      <div id="bet-display" class="bet-display">$10</div>
+      <button id="bet-increase" type="button">+</button>
+    </div>
+    <div class="slot-cash-box" id="cash-box">
+      $1000
+    </div>
+     <button id="spin">Spin</button>
     </div>
     <div id="result"></div>
+    <div class="coin-burst"></div>
   </div>
   <script src="scripts.js"></script>
 </body>
