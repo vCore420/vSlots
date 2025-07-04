@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>vSlot Machine</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="slot-machine">
+    <div class="slot-sprites"></div>
+    <div class="slot-glare"></div>
+    <div class="slot-bulbs"></div>
+    <div class="slot-stars"></div>
+    <div class="reels">
+      <div class="reel" id="reel1"></div>
+      <div class="reel" id="reel2"></div>
+      <div class="reel" id="reel3"></div>
+      <div class="reel" id="reel4"></div>
+      <div class="reel" id="reel5"></div>
+    </div>
+    <div class="controls">
+      <div class="bet-group">
+      <button id="bet-decrease" type="button">&#8722;</button>
+      <div id="bet-display" class="bet-display">$10</div>
+      <button id="bet-increase" type="button">+</button>
+    </div>
+    <div class="slot-cash-box" id="cash-box">
+      $1000
+    </div>
+     <button id="spin">Spin</button>
+    </div>
+    <div id="feature-counter" class="feature-counter" style="display:none;"></div>
+    <div id="result"></div>
+    <div class="coin-burst"></div>
+    <div id="feature-modal" class="feature-modal" style="display:none;">
+      <div class="feature-modal-content">
+        <h2>🎉 Feature Unlocked! 🎉</h2>
+        <p>You’ve won <b>7 Free Games</b> with extra wilds!</p>
+        <p>Press <b>Spin</b> to begin your free games.</p>
+        <button id="feature-spin-btn" class="feature-spin-btn">Spin</button>
+      </div>
+    </div>
+  </div>
+  <script src="scripts.js"></script>
+</body>
+</html>
